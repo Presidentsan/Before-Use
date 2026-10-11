@@ -1660,6 +1660,12 @@ def render_evidence_passport(
     )
 
     st.markdown(
+        '<div class="bu-passport-banner"><strong>Your Evidence Passport</strong>'
+        '<span>Regulatory evidence and safety signals, clearly separated.</span></div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
         "### Product checked"
     )
 
@@ -1731,42 +1737,24 @@ def render_evidence_passport(
             )
         )
 
-    _render_current_greenbook(
-        sources.get(
-            "greenbook"
-        )
-        or {},
-        product,
-    )
+    # Each source is presented in a separate card; evidence computation is unchanged.
+    with st.container(border=True):
+        _render_overall_finding(result)
 
-    _render_napams_record(
-        result
-    )
+    with st.container(border=True):
+        _render_current_greenbook(sources.get("greenbook") or {}, product)
 
-    _render_historical(
-        sources.get(
-            "historical_nafdac"
-        )
-        or {}
-    )
+    with st.container(border=True):
+        _render_napams_record(result)
 
-    _render_nafdac_alerts(
-        sources.get(
-            "nafdac_alerts"
-        )
-        or {}
-    )
+    with st.container(border=True):
+        _render_historical(sources.get("historical_nafdac") or {})
 
-    _render_who_alerts(
-        sources.get(
-            "who_alerts"
-        )
-        or {}
-    )
+    with st.container(border=True):
+        _render_nafdac_alerts(sources.get("nafdac_alerts") or {})
 
-    _render_overall_finding(
-        result
-    )
+    with st.container(border=True):
+        _render_who_alerts(sources.get("who_alerts") or {})
 
     _render_why(
         result

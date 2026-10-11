@@ -700,6 +700,81 @@ st.markdown(
         color: #075C7C !important;
     }
 
+
+    /* Before Use: unified post-home visual language. */
+    .stApp div.stButton > button[kind="primary"],
+    .stApp div.stButton > button[data-testid="stBaseButton-primary"],
+    .stApp div[data-testid="stFormSubmitButton"] button[kind="primary"] {
+        background: #0B6E5B !important;
+        border: 1px solid #0B6E5B !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 5px 18px rgba(11,110,91,.15);
+        transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+    }
+    .stApp div.stButton > button[kind="primary"]:hover,
+    .stApp div.stButton > button[data-testid="stBaseButton-primary"]:hover {
+        background: #07503F !important;
+        border-color: #07503F !important;
+        box-shadow: 0 7px 20px rgba(11,110,91,.23);
+    }
+    .stApp div.stButton > button:focus-visible,
+    .stApp [data-baseweb="select"]:focus-within,
+    .stApp input:focus-visible,
+    .stApp textarea:focus-visible {
+        outline: 2px solid #0B6E5B !important;
+        outline-offset: 2px;
+    }
+    .stApp div.stButton > button[kind="secondary"]:hover,
+    .stApp div.stButton > button[data-testid="stBaseButton-secondary"]:hover {
+        border-color: #0B6E5B !important;
+        background: #E4F3EC !important;
+    }
+    .stApp [data-testid="stRadio"] [role="radiogroup"] label,
+    .stApp [data-testid="stCheckbox"] label,
+    .stApp [data-testid="stToggle"] label {
+        border-radius: 10px;
+    }
+    .stApp [data-testid="stVerticalBlockBorderWrapper"]:has(> div > [data-testid="stVerticalBlock"]) {
+        border-radius: 16px;
+    }
+    .stApp [data-testid="stAlert"] {
+        border-radius: 14px !important;
+        border-width: 1px !important;
+        box-shadow: 0 2px 8px rgba(11,27,33,.025);
+    }
+    .stApp [data-testid="stExpander"] {
+        border: 1px solid #D6E2DA !important;
+        border-radius: 14px !important;
+        background: #FFFFFF !important;
+        overflow: hidden;
+    }
+    .stApp [data-testid="stExpander"] summary {
+        color: #0B1B21 !important;
+        font-weight: 650;
+    }
+    .stApp [data-testid="stTextInput"] [data-baseweb="input"],
+    .stApp [data-testid="stTextArea"] [data-baseweb="textarea"],
+    .stApp [data-testid="stSelectbox"] [data-baseweb="select"] > div {
+        border-radius: 12px !important;
+        min-height: 46px;
+    }
+    .stApp [data-testid="stAudioInput"],
+    .stApp [data-testid="stAudio"],
+    .stApp [data-testid="stFileUploader"] {
+        border-radius: 14px;
+    }
+    .stApp [data-testid="stMarkdownContainer"] h3 {
+        color: #0B1B21;
+        letter-spacing: -.015em;
+    }
+    @media (max-width: 760px) {
+        .stApp .block-container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            padding-top: 1rem !important;
+        }
+        .stApp div.stButton > button { min-height: 48px; }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -2159,7 +2234,7 @@ if (
 
                     <div class="pipe-item">
                         <span class="pipe-label">Speak</span>
-                        <span class="pipe-value">EN / YO / HA / IG</span>
+                        <span class="pipe-value">EN / YO</span>
                     </div>
 
                     <div class="pipe-item">

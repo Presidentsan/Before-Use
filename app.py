@@ -618,6 +618,43 @@ st.markdown(
         row-gap: .45rem;
     }
 
+
+    /* BEFORE USE: consistent accessible confirmation inputs on Streamlit Cloud */
+    .stApp [data-testid="stTextInput"] [data-baseweb="input"],
+    .stApp [data-testid="stTextArea"] [data-baseweb="textarea"],
+    .stApp [data-testid="stNumberInput"] [data-baseweb="input"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #B9CEC5 !important;
+        border-radius: 10px !important;
+    }
+    .stApp [data-testid="stTextInput"] input,
+    .stApp [data-testid="stTextArea"] textarea,
+    .stApp [data-testid="stNumberInput"] input {
+        background-color: #FFFFFF !important;
+        color: #0B1B21 !important;
+        -webkit-text-fill-color: #0B1B21 !important;
+        caret-color: #0B6E5B !important;
+        opacity: 1 !important;
+    }
+    .stApp [data-testid="stTextInput"] input::placeholder,
+    .stApp [data-testid="stTextArea"] textarea::placeholder {
+        color: #60736D !important;
+        -webkit-text-fill-color: #60736D !important;
+        opacity: 1 !important;
+    }
+    .stApp [data-testid="stTextInput"] [data-baseweb="input"]:focus-within,
+    .stApp [data-testid="stTextArea"] [data-baseweb="textarea"]:focus-within,
+    .stApp [data-testid="stNumberInput"] [data-baseweb="input"]:focus-within {
+        border-color: #0B6E5B !important;
+        box-shadow: 0 0 0 2px rgba(11,110,91,.16) !important;
+    }
+    .stApp [data-testid="stTextInput"] input:disabled,
+    .stApp [data-testid="stTextArea"] textarea:disabled {
+        color: #405751 !important;
+        -webkit-text-fill-color: #405751 !important;
+        background-color: #EFF4F1 !important;
+    }
+
     </style>
     """,
     unsafe_allow_html=True,

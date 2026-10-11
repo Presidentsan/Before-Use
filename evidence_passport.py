@@ -618,6 +618,10 @@ def _render_napams_record(
                 symbol = "✓"
                 state_label = "Match"
 
+            elif state == "needs_verification":
+                symbol = "◷"
+                state_label = "Needs verification"
+
             elif (
                 state
                 ==
@@ -644,6 +648,9 @@ def _render_napams_record(
                 st.markdown(
                     f"**{symbol} {field} — {state_label}**"
                 )
+
+                if check.get("note"):
+                    st.caption(check["note"])
 
                 compare_left, compare_right = (
                     st.columns(
@@ -1184,6 +1191,7 @@ def _render_overall_finding(
         code
         in {
             "details_mismatch",
+            "details_need_verification",
             "registration_inactive",
             "record_not_found",
             "source_incomplete",
@@ -1771,9 +1779,24 @@ def render_evidence_passport(
         "untampered, properly stored or safe to use."
     )
 
-    _render_mas_section(
-        result
-    )
+    # MAS scratch-code guidance is specific to eligible medicine packs.
+    # An explicit non-medicine classification should not display it.
+    official_record = result.get("official_record") or {}
+    category = str(
+        official_record.get("category")
+        or official_record.get("category_name")
+        or product.get("category")
+        or product.get("product_category")
+        or product.get("product_type")
+        or ""
+    ).strip().lower()
+    non_medicine_categories = {
+        "cosmetic", "cosmetics", "personal care", "oral care",
+        "food", "foods", "beverage", "beverages", "packaged water",
+        "household chemical", "household chemicals", "chemical", "chemicals",
+    }
+    if category not in non_medicine_categories:
+        _render_mas_section(result)
 
     _render_report_section(
         result

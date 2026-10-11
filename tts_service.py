@@ -1,8 +1,9 @@
-"""Before Use server-generated TTS (English and Yorùbá)."""
-import asyncio
+"""Before Use server-generated TTS (English through Gemini, Yorùbá through Modal)."""
 import base64
+import io
 import os
 import time
+import wave
 from pathlib import Path
 
 import requests
@@ -95,29 +96,62 @@ def generate_yoruba_speech(text: str) -> bytes:
     raise RuntimeError('Yorùbá voice service is unavailable.') from last_error
 
 
-async def _english_audio_async(text: str) -> bytes:
-    try:
-        import edge_tts
-    except ImportError as exc:
-        raise RuntimeError('English voice requires edge-tts in requirements.txt.') from exc
-    voice = os.environ.get('ENGLISH_TTS_VOICE', 'en-NG-EzinneNeural').strip()
-    communicate = edge_tts.Communicate(text=text, voice=voice, rate='-5%')
-    chunks = []
-    async for chunk in communicate.stream():
-        if chunk.get('type') == 'audio':
-            chunks.append(chunk['data'])
-    result = b''.join(chunks)
-    if not result:
-        raise RuntimeError('English TTS returned no audio.')
-    return result
+def _pcm_to_wav(pcm: bytes, rate: int = 24000) -> bytes:
+    if not pcm:
+        raise RuntimeError('Gemini TTS returned empty PCM audio.')
+    buffer = io.BytesIO()
+    with wave.open(buffer, 'wb') as output:
+        output.setnchannels(1)
+        output.setsampwidth(2)
+        output.setframerate(rate)
+        output.writeframes(pcm)
+    return buffer.getvalue()
 
 
 def generate_english_speech(text: str) -> bytes:
+    """Return playable WAV bytes. Requires a Gemini API key with TTS access."""
     text = str(text or '').strip()
     if not text:
         raise ValueError('Text is required for English TTS.')
-    # Streamlit executes script runs in a normal synchronous thread.
-    return asyncio.run(_english_audio_async(text))
+
+    key = os.environ.get('GEMINI_API_KEY', '').strip() or os.environ.get('GOOGLE_API_KEY', '').strip()
+    if not key:
+        raise RuntimeError('GEMINI_API_KEY (or GOOGLE_API_KEY) is not configured.')
+
+    from google import genai
+    from google.genai import types
+
+    model = os.environ.get('ENGLISH_TTS_MODEL', 'gemini-3.1-flash-tts-preview').strip()
+    voice = os.environ.get('GEMINI_TTS_VOICE', 'Kore').strip()
+    client = genai.Client(api_key=key)
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=f'Read the following exactly, in a calm, friendly Nigerian English style: {text}',
+            config=types.GenerateContentConfig(
+                response_modalities=['AUDIO'],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice)
+                    )
+                ),
+            ),
+        )
+        candidates = response.candidates or []
+        parts = candidates[0].content.parts if candidates and candidates[0].content else []
+        for part in parts:
+            inline = getattr(part, 'inline_data', None)
+            if inline and inline.data:
+                raw = inline.data
+                if isinstance(raw, str):
+                    raw = base64.b64decode(raw)
+                raw = bytes(raw)
+                if raw.startswith(b'RIFF') and raw[8:12] == b'WAVE':
+                    return raw
+                return _pcm_to_wav(raw)
+        raise RuntimeError('Gemini returned no English audio. Check TTS model availability and quota.')
+    finally:
+        client.close()
 
 
 def generate_speech(text: str, language: str) -> bytes:

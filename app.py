@@ -655,6 +655,51 @@ st.markdown(
         background-color: #EFF4F1 !important;
     }
 
+
+    /* BEFORE USE: accessible light-theme dropdowns and information panels */
+    .stApp [data-testid="stSelectbox"] [data-baseweb="select"] > div,
+    .stApp [data-testid="stSelectbox"] [data-baseweb="select"] [role="combobox"],
+    .stApp [data-testid="stMultiSelect"] [data-baseweb="select"] > div {
+        background: #FFFFFF !important;
+        color: #0B1B21 !important;
+        -webkit-text-fill-color: #0B1B21 !important;
+        border-color: #B9CEC5 !important;
+    }
+    .stApp [data-testid="stSelectbox"] [data-baseweb="select"] span,
+    .stApp [data-testid="stSelectbox"] [data-baseweb="select"] input,
+    .stApp [data-testid="stSelectbox"] [data-baseweb="select"] svg,
+    .stApp [data-testid="stSelectbox"] [data-baseweb="select"] div {
+        color: #0B1B21 !important;
+        -webkit-text-fill-color: #0B1B21 !important;
+        fill: #0B1B21 !important;
+    }
+    .stApp [data-testid="stSelectbox"] [data-baseweb="select"]:focus-within > div {
+        border-color: #0B6E5B !important;
+        box-shadow: 0 0 0 2px rgba(11,110,91,.16) !important;
+    }
+    /* Dropdown menu is rendered in a portal, often outside .stApp. */
+    [data-baseweb="popover"] [role="listbox"],
+    [data-baseweb="popover"] [role="option"],
+    [data-baseweb="menu"],
+    [data-baseweb="menu"] li {
+        background-color: #FFFFFF !important;
+        color: #0B1B21 !important;
+        -webkit-text-fill-color: #0B1B21 !important;
+    }
+    [data-baseweb="popover"] [aria-selected="true"],
+    [data-baseweb="menu"] [aria-selected="true"] {
+        background-color: #E3F3ED !important;
+        color: #0B5547 !important;
+    }
+    .stApp [data-testid="stAlert"] [data-testid="stMarkdownContainer"] p,
+    .stApp [data-testid="stAlert"] [data-testid="stMarkdownContainer"] span {
+        color: #183B4C !important;
+        -webkit-text-fill-color: #183B4C !important;
+    }
+    .stApp [data-testid="stAlert"] a {
+        color: #075C7C !important;
+    }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -753,6 +798,15 @@ elif st.session_state.current_step == "checking":
         "result"
     )
 
+# Protect returning visitors whose browser session still has an unfinished
+# Hausa/Igbo selection. Never strand them inside a voice-capture step.
+if st.session_state.get("selected_language") in {"ha", "ig"}:
+    st.session_state.selected_language = "en"
+    st.session_state.pop("voice_language_selector", None)
+    if st.session_state.current_step not in {"start", "validation"}:
+        st.session_state.current_step = "start"
+    st.session_state["unsupported_language_notice"] = True
+
 
 def render_html(
     markup,
@@ -802,17 +856,25 @@ def render_language_selector():
             </div>
 
             <div class="language-copy">
-                Before Use will route your recording
-                to the matching N-ATLAS speech model.
+                Nigerian English and Yorùbá are available now.
+                Hausa and Igbo are coming soon.
             </div>
 
         </div>
         """
     )
 
-    options = language_options()
+    # Only languages supported by the complete voice checking journey
+    # are offered here. The others remain visible as coming soon.
+    options = [code for code in language_options() if code in {"en", "yo"}]
+    if not options:
+        options = ["en", "yo"]
 
     current = selected_language()
+    if current not in options:
+        current = "en"
+        st.session_state.selected_language = current
+        st.session_state.pop("voice_language_selector", None)
 
     try:
         current_index = options.index(
@@ -834,6 +896,13 @@ def render_language_selector():
     st.session_state.selected_language = (
         choice
     )
+
+    st.caption("Hausa and Igbo voice checking: coming soon.")
+    if st.session_state.pop("unsupported_language_notice", False):
+        st.info(
+            "Hausa and Igbo checking are not available yet. "
+            "We've returned you to a supported language so you can continue."
+        )
 
     return choice
 
@@ -1976,7 +2045,7 @@ if (
             <div class="hero-copy">
 
                 Say what's on the pack, in Nigerian
-                English, Yorùbá, Hausa, or Igbo.
+                Nigerian English or Yorùbá.
                 Before Use reads it back to you,
                 cross-checks it against NAFDAC and
                 WHO records, and explains what the available
@@ -2052,11 +2121,11 @@ if (
                 </div>
 
                 <div class="trust-pill">
-                    Hausa
+                    Hausa: coming soon
                 </div>
 
                 <div class="trust-pill">
-                    Igbo
+                    Igbo: coming soon
                 </div>
 
             </div>

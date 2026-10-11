@@ -1,0 +1,140 @@
+[
+  {
+    "id": "890f89378f3ce7f3",
+    "product": {
+      "product_name": "Panadol Extra",
+      "nafdac_number": "04-0005",
+      "manufacturer": "GlaxoSmithKline Consumer Nigeria PLC",
+      "batch_number": "116Y",
+      "expiry_date": "December 2027"
+    },
+    "watched_at": "2026-10-08T23:21:01+00:00",
+    "last_checked_at": "2026-10-08T23:21:01+00:00",
+    "last_result": {
+      "code": "current_record_match",
+      "headline": "Current registration record matches",
+      "summary": "The confirmed registration number matches a current NAFDAC Greenbook record, and the comparable product details are consistent.",
+      "next_action": "No matching high-priority safety alert was found in the connected sources. Continue checking the physical pack. Registration does not prove that this individual pack is genuine.",
+      "product_state": {
+        "product_name": "Panadol Extra",
+        "nafdac_number": "04-0005",
+        "manufacturer": "GlaxoSmithKline Consumer Nigeria PLC",
+        "batch_number": "116Y",
+        "expiry_date": "December 2027"
+      },
+      "sources": {
+        "greenbook": {
+          "source_ok": true,
+          "source_name": "NAFDAC Greenbook",
+          "query": "04-0005",
+          "records": [
+            {
+              "product_id": "427",
+              "product_name": "Panadol Extra Caplet**",
+              "registration_number": "04-0005",
+              "active_ingredients": "Paracetamol; Caffeine",
+              "category": "Drugs",
+              "form": "Caplet",
+              "route": "Oral",
+              "strength": "500 mg; 30 mg",
+              "applicant": "GlaxoSmithKline Consumer Nigeria PLC (GSK)",
+              "approval_date": "2021-10-28",
+              "registration_expiry_date": "2026-10-27",
+              "status": "Active",
+              "source_name": "NAFDAC Greenbook",
+              "source_url": "https://greenbook.nafdac.gov.ng/products/details/427"
+            }
+          ],
+          "error": null
+        },
+        "historical_nafdac": {
+          "source_ok": true,
+          "source_name": "Historical NAFDAC evidence",
+          "query": {
+            "registration_number": "04-0005",
+            "product_name": "Panadol Extra",
+            "manufacturer": "GlaxoSmithKline Consumer Nigeria PLC"
+          },
+          "records": [],
+          "error": null
+        },
+        "nafdac_alerts": {
+          "source_ok": true,
+          "source_name": "NAFDAC recalls and safety alerts",
+          "query": {
+            "product_name": "Panadol Extra",
+            "registration_number": "04-0005",
+            "batch_number": "116Y",
+            "manufacturer": "GlaxoSmithKline Consumer Nigeria PLC"
+          },
+          "records": [],
+          "error": null
+        },
+        "who_alerts": {
+          "source_ok": true,
+          "source_name": "WHO Medical Product Alerts",
+          "source_url": "https://www.who.int/teams/regulation-prequalification/incidents-and-SF/full-list-of-who-medical-product-alerts",
+          "query": {
+            "product_name": "Panadol Extra",
+            "registration_number": "04-0005",
+            "batch_number": "116Y",
+            "manufacturer": "GlaxoSmithKline Consumer Nigeria PLC"
+          },
+          "records": [],
+          "error": null
+        }
+      },
+      "registration_result": {
+        "code": "records_match",
+        "level": "positive",
+        "headline": "Registration record matches",
+        "summary": "The NAFDAC registration number was found as an active record, and the other comparable details you provided match the selected official record.",
+        "claim_limit": "This confirms a registration-record match. It does not prove that the individual pack is genuine, untampered, properly stored, or safe to use.",
+        "next_action": "Continue to the batch and safety-alert check before making a final Before Use decision.",
+        "field_checks": [
+          {
+            "field": "NAFDAC registration number",
+            "user_value": "04-0005",
+            "official_value": "04-0005",
+            "state": "match",
+            "similarity": 1.0
+          },
+          {
+            "field": "Product name",
+            "user_value": "Panadol Extra",
+            "official_value": "Panadol Extra Caplet**",
+            "state": "match",
+            "similarity": 0.788
+          },
+          {
+            "field": "Manufacturer / applicant",
+            "user_value": "GlaxoSmithKline Consumer Nigeria PLC",
+            "official_value": "GlaxoSmithKline Consumer Nigeria PLC (GSK)",
+            "state": "match",
+            "similarity": 0.947
+          }
+        ],
+        "official_record": {
+          "product_id": "427",
+          "product_name": "Panadol Extra Caplet**",
+          "registration_number": "04-0005",
+          "active_ingredients": "Paracetamol; Caffeine",
+          "category": "Drugs",
+          "form": "Caplet",
+          "route": "Oral",
+          "strength": "500 mg; 30 mg",
+          "applicant": "GlaxoSmithKline Consumer Nigeria PLC (GSK)",
+          "approval_date": "2021-10-28",
+          "registration_expiry_date": "2026-10-27",
+          "status": "Active",
+          "source_name": "NAFDAC Greenbook",
+          "source_url": "https://greenbook.nafdac.gov.ng/products/details/427"
+        },
+        "candidate_count": 1,
+        "duplicate_note": null
+      },
+      "exact_safety_alerts": [],
+      "relevant_who_alerts": []
+    }
+  }
+]

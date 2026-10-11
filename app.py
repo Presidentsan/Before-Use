@@ -575,6 +575,49 @@ st.markdown(
         }
     }
 
+
+    /* Deployed Streamlit light-theme control contrast */
+    .stApp [data-testid="stWidgetLabel"],
+    .stApp [data-testid="stWidgetLabel"] p,
+    .stApp [data-testid="stRadio"] label,
+    .stApp [data-testid="stRadio"] label p,
+    .stApp [data-testid="stCheckbox"] label,
+    .stApp [data-testid="stToggle"] label,
+    .stApp [data-testid="stToggle"] label p {
+        color: #0B1B21 !important;
+        opacity: 1 !important;
+    }
+    .stApp div.stButton > button[kind="secondary"],
+    .stApp div.stButton > button[data-testid="stBaseButton-secondary"],
+    .stApp div.stButton > button[kind="secondaryFormSubmit"] {
+        background: #FFFFFF !important;
+        border: 1px solid #BBCDC5 !important;
+        color: #0B1B21 !important;
+    }
+    .stApp div.stButton > button[kind="secondary"] *,
+    .stApp div.stButton > button[data-testid="stBaseButton-secondary"] *,
+    .stApp div.stButton > button[kind="secondaryFormSubmit"] * {
+        color: #0B1B21 !important;
+        -webkit-text-fill-color: #0B1B21 !important;
+    }
+    .stApp div.stButton > button[kind="primary"],
+    .stApp div.stButton > button[data-testid="stBaseButton-primary"] {
+        background: #FF4B4B !important;
+        color: #FFFFFF !important;
+        border: 1px solid #FF4B4B !important;
+    }
+    .stApp div.stButton > button[kind="primary"] *,
+    .stApp div.stButton > button[data-testid="stBaseButton-primary"] * {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+    }
+    .stApp input, .stApp textarea, .stApp [data-baseweb="select"] {
+        color: #0B1B21;
+    }
+    .stApp [data-testid="stRadio"] [role="radiogroup"] {
+        row-gap: .45rem;
+    }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -1899,8 +1942,8 @@ if (
                 English, Yorùbá, Hausa, or Igbo.
                 Before Use reads it back to you,
                 cross-checks it against NAFDAC and
-                WHO records, and tells you whether
-                it's safe before you open the blister.
+                WHO records, and explains what the available
+                evidence can and cannot confirm.
 
             </div>
             """

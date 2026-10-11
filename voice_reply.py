@@ -719,184 +719,18 @@ def _escape_js_text(
     )
 
 
-def _render_english_browser_speech(
-    text,
-    message_id,
-    autoplay=True,
-):
-
-    clean_text = (
-        str(
-            text
-            or ""
-        )
-        .strip()
-    )
-
-    if not clean_text:
-        return
-
-    safe_text = (
-        _escape_js_text(
-            clean_text
-        )
-    )
-
-    safe_id = (
-        re.sub(
-            r"[^a-zA-Z0-9_-]",
-            "_",
-            str(
-                message_id
-                or
-                "english_reply"
-            ),
-        )
-    )
-
-    autoplay_js = (
-        "speakText();"
-        if autoplay
-        else ""
-    )
-
-    html = f"""
-    <!DOCTYPE html>
-
-    <html>
-    <body style="
-        margin: 0;
-        padding: 0;
-        background: transparent;
-        font-family: sans-serif;
-    ">
-
-        <button
-            id="speak_{safe_id}"
-            onclick="speakText()"
-            style="
-                width: 100%;
-                border: 1px solid rgba(0,0,0,0.12);
-                border-radius: 10px;
-                padding: 10px 14px;
-                background: white;
-                cursor: pointer;
-                font-size: 14px;
-            "
-        >
-            🔊 Hear reply
-        </button>
-
-        <script>
-
-            const textToSpeak = `{safe_text}`;
-
-            function chooseEnglishVoice() {{
-
-                const voices =
-                    window.speechSynthesis.getVoices();
-
-                const preferredCodes = [
-                    "en-NG",
-                    "en-GB",
-                    "en-US",
-                    "en"
-                ];
-
-                for (
-                    const code
-                    of preferredCodes
-                ) {{
-
-                    const found =
-                        voices.find(
-                            voice =>
-                                voice.lang
-                                &&
-                                voice.lang
-                                .toLowerCase()
-                                .startsWith(
-                                    code.toLowerCase()
-                                )
-                        );
-
-                    if (found) {{
-                        return found;
-                    }}
-                }}
-
-                return null;
-            }}
-
-
-            function speakText() {{
-
-                if (
-                    !("speechSynthesis" in window)
-                ) {{
-                    return;
-                }}
-
-                window.speechSynthesis.cancel();
-
-                const utterance =
-                    new SpeechSynthesisUtterance(
-                        textToSpeak
-                    );
-
-                utterance.lang = "en-NG";
-
-                utterance.rate = 0.95;
-
-                utterance.pitch = 1.0;
-
-                const voice =
-                    chooseEnglishVoice();
-
-                if (voice) {{
-                    utterance.voice = voice;
-                }}
-
-                window.speechSynthesis.speak(
-                    utterance
-                );
-            }}
-
-
-            if (
-                window.speechSynthesis
-                &&
-                window.speechSynthesis
-                .getVoices()
-                .length
-                ===
-                0
-            ) {{
-
-                window.speechSynthesis
-                .onvoiceschanged = () => {{
-
-                    {autoplay_js}
-
-                }};
-
-            }} else {{
-
-                {autoplay_js}
-
-            }}
-
-        </script>
-
-    </body>
-    </html>
-    """
-
-    components.html(
-        html,
-        height=52,
-        scrolling=False,
-    )
+def _render_english_server_speech(text, autoplay=True):
+    """Generate a real MP3 file, independent of browser speech synthesis."""
+    try:
+        with st.spinner("Preparing English voice..."):
+            audio_bytes = _generate_audio(text, "en")
+        if not audio_bytes:
+            raise RuntimeError("English voice service returned empty audio.")
+        st.audio(audio_bytes, format="audio/mp3", autoplay=autoplay)
+        st.caption("If your browser blocks automatic sound, press Play above.")
+    except Exception as exc:
+        print("ENGLISH TTS ERROR:", type(exc).__name__, str(exc))
+        st.warning("English voice is temporarily unavailable. You can still read the reply below.")
 
 
 # =========================================================
@@ -965,26 +799,10 @@ def render_voice_reply(
     # =====================================================
 
     if language == "en":
-
-        print(
-            "ENGLISH VOICE SOURCE:",
-            "browser speech"
-        )
-
-        _render_english_browser_speech(
-            text=text,
-            message_id=message_id,
-            autoplay=autoplay,
-        )
-
-        with st.expander(
-            "Read the reply"
-        ):
-
-            st.write(
-                text
-            )
-
+        print("ENGLISH VOICE SOURCE:", "server-generated MP3")
+        _render_english_server_speech(text=text, autoplay=autoplay)
+        with st.expander("Read the reply"):
+            st.write(text)
         return
 
 
@@ -1039,6 +857,8 @@ def render_voice_reply(
                 )
 
 
+                if not audio_bytes:
+                    raise RuntimeError("Local Yorùbá audio file is empty")
                 st.audio(
                     audio_bytes,
                     format="audio/wav",
@@ -1106,6 +926,8 @@ def render_voice_reply(
                 )
 
 
+            if not audio_bytes:
+                raise RuntimeError("TTS returned no audio bytes")
             st.audio(
                 audio_bytes,
                 format="audio/wav",

@@ -1508,6 +1508,36 @@ def render_brand():
     )
 
 
+def render_quick_navigation():
+    """Persistent user navigation. Does not reset an in-progress check."""
+    active = st.session_state.current_step
+    in_check = active in {"capture", "result", "validation_consent"}
+    c1, c2, c3 = st.columns(3, gap="small")
+    with c1:
+        if st.button("🏠 Home", key="nav_home", use_container_width=True):
+            st.session_state.current_step = "start"
+            st.rerun()
+    with c2:
+        check_label = "▶ Resume check" if in_check or (
+            st.session_state.get("product_state") or st.session_state.get("transcript")
+        ) else "💊 Check a product"
+        if st.button(check_label, key="nav_check", use_container_width=True):
+            if not in_check:
+                if st.session_state.get("product_state") and st.session_state.get("evidence_result") is not None:
+                    st.session_state.current_step = "result"
+                elif st.session_state.get("transcript"):
+                    st.session_state.current_step = "capture"
+                elif st.session_state.validation_consent_given or st.session_state.validation_declined:
+                    st.session_state.current_step = "capture"
+                else:
+                    st.session_state.current_step = "validation_consent"
+            st.rerun()
+    with c3:
+        if st.button("📍 Pharmacies", key="nav_pharmacies", use_container_width=True):
+            st.session_state.current_step = "pharmacies"
+            st.rerun()
+
+
 def render_stats_band():
     """Evidence panel that sits under the hero photo, with a single
     orchestrated reveal: the four cells rise in with a short stagger
@@ -2230,8 +2260,42 @@ if (
 
         render_language_selector()
 
+        # Welcome guidance: only attempt autoplay once per language in this
+        # browser session. Browser autoplay restrictions are respected; the
+        # audio player always provides a manual Play/replay button.
+        with st.container(border=True):
+            st.markdown("**🔊 Welcome to Before Use**")
+            st.caption(
+                "A short introduction explains what to do next. "
+                "If sound does not start, press Play below."
+            )
+            welcome_voice_enabled = render_voice_toggle()
+            welcome_language = selected_language()
+            welcome_message = (
+                "Welcome to Before Use, your voice-powered product "
+                "checking assistant. To get started, tap Check a "
+                "Product, then speak or type the details on the "
+                "label. We will help you compare those details "
+                "with available official registration records "
+                "and safety alerts. Let's get started."
+            )
+            if welcome_voice_enabled:
+                welcome_autoplay_key = (
+                    f"welcome_autoplay_attempted_{welcome_language}"
+                )
+                welcome_autoplay = not st.session_state.get(
+                    welcome_autoplay_key, False
+                )
+                render_voice_reply(
+                    welcome_message,
+                    "welcome_home",
+                    enabled=True,
+                    autoplay=welcome_autoplay,
+                )
+                st.session_state[welcome_autoplay_key] = True
+
         if st.button(
-            "Tell me what you see",
+            "Check a Product",
             type="primary",
             use_container_width=True,
         ):
@@ -2272,7 +2336,7 @@ if (
 
         with nav2:
             if st.button(
-                "📍 Find a pharmacy",
+                "📍 Find a safer place to buy",
                 use_container_width=True,
             ):
                 st.session_state.current_step = (
@@ -2376,6 +2440,7 @@ elif (
     "validation_consent"
 ):
     render_brand()
+    render_quick_navigation()
 
     _, center, _ = st.columns(
         [
@@ -2569,6 +2634,7 @@ elif (
     "capture"
 ):
     render_brand()
+    render_quick_navigation()
 
     render_progress(
         "capture"
@@ -2590,15 +2656,13 @@ elif (
             </div>
 
             <div class="screen-heading">
-                Tell me about the product.
+                Tell us what's on the pack.
             </div>
 
             <div class="screen-copy">
 
-                Speak naturally and give whatever details
-                you can see. Before Use will organise them
-                into one card for you to confirm before
-                anything is checked.
+                Tap to speak, then review the details we heard.
+                You can correct anything before we check.
 
             </div>
             """
@@ -2643,7 +2707,7 @@ elif (
                 )
 
                 if st.button(
-                    "Use this recording",
+                    "Continue to review details",
                     type="primary",
                     use_container_width=True,
                 ):
@@ -2820,7 +2884,7 @@ elif (
                 <div class="soft-card" style="margin-top: 1rem;">
 
                     <div class="example-label">
-                        Confirm what I heard
+                        Check what I heard
                     </div>
 
                     <div class="example-note">
@@ -2969,7 +3033,7 @@ elif (
             )
 
             if st.button(
-                "Check the evidence",
+                "Check this product",
                 type="primary",
                 use_container_width=True,
             ):
@@ -3043,6 +3107,7 @@ elif (
     "result"
 ):
     render_brand()
+    render_quick_navigation()
 
     render_progress(
         "result"
@@ -3081,43 +3146,46 @@ elif (
 
             <div class="screen-copy">
 
-                Before Use compares the details you confirmed
-                with the connected regulatory, historical,
-                and safety evidence. A registration match
-                alone does not prove that the physical pack
-                in your hand is genuine.
+                Here's what the records and safety alerts show.
+                Read the finding first, then explore the supporting evidence.
+                A registration match does not prove a pack is genuine.
 
             </div>
             """
         )
+
+        if st.button("← Correct product details", key="result_edit_details", use_container_width=True):
+            st.session_state.current_step = "capture"
+            st.rerun()
 
         render_product_summary(
             product
         )
 
-        render_html(
-            """
-            <div class="source-chips">
+        with st.expander("Evidence sources checked"):
+            render_html(
+                """
+                <div class="source-chips">
 
-                <div class="source-chip">
-                    NAFDAC Greenbook
+                    <div class="source-chip">
+                        NAFDAC Greenbook
+                    </div>
+
+                    <div class="source-chip">
+                        Historical NAFDAC
+                    </div>
+
+                    <div class="source-chip">
+                        NAFDAC alerts
+                    </div>
+
+                    <div class="source-chip">
+                        WHO alerts
+                    </div>
+
                 </div>
-
-                <div class="source-chip">
-                    Historical NAFDAC
-                </div>
-
-                <div class="source-chip">
-                    NAFDAC alerts
-                </div>
-
-                <div class="source-chip">
-                    WHO alerts
-                </div>
-
-            </div>
-            """
-        )
+                """
+            )
 
         # -------------------------------------------------
         # CHECK + RESULT ON THE SAME VISIBLE STEP
@@ -3389,6 +3457,7 @@ elif (
     "watchlist"
 ):
     render_brand()
+    render_quick_navigation()
 
     _, center, _ = st.columns(
         [
@@ -3547,6 +3616,7 @@ elif (
     "pharmacies"
 ):
     render_brand()
+    render_quick_navigation()
 
     _, center, _ = st.columns(
         [

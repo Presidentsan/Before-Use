@@ -835,29 +835,24 @@ def _render_nafdac_alerts(
     )
 
     if not source_ok:
-        if source and source.get("source_mode") == "official_notice_snapshot":
-            st.info(
-                "A stored collection of official NAFDAC notices was checked. "
-                "It does not cover every current notice."
+        st.warning(
+            "The NAFDAC safety-alert source "
+            "could not be fully checked."
+        )
+
+        if (
+            source
+            and source.get(
+                "error"
             )
-            if source.get("last_successful_update"):
-                st.caption("Last updated: " + str(source["last_successful_update"]))
-            if not records:
-                st.caption(
-                    "No matching notice was found in this limited collection. "
-                    "This is not confirmation that no NAFDAC alert exists."
+        ):
+            st.caption(
+                source.get(
+                    "error"
                 )
-        else:
-            st.warning(
-                "NAFDAC safety alerts could not be fully checked. "
-                "This is a source-availability issue, not a finding about your product."
             )
-            if source and source.get("error"):
-                st.caption(source.get("error"))
-        if not records:
-            return
-        # Do not suppress confirmed alert candidates simply because coverage is partial.
-        st.warning("Potentially relevant official notices were found. Review them below.")
+
+        return
 
     high_records = [
         record
@@ -999,11 +994,10 @@ def _render_nafdac_alerts(
 
         return
 
-    if source_ok:
-        st.success(
-            "No matching high-confidence NAFDAC safety alert "
-            "was found for the confirmed identifiers."
-        )
+    st.success(
+        "No matching high-confidence NAFDAC safety alert "
+        "was found for the confirmed identifiers."
+    )
 
     if possible_records:
         st.caption(
@@ -1687,23 +1681,6 @@ def render_evidence_passport(
         _render_nafdac_alerts(sources.get("nafdac_alerts") or {})
         _render_who_alerts(sources.get("who_alerts") or {})
         _render_why(result)
-
-    # Relevant safety notices stay visible even if the registration status is
-    # the main finding. Incomplete source coverage never suppresses matches.
-    naf = (sources.get("nafdac_alerts") or {}).get("records") or []
-    who = (sources.get("who_alerts") or {}).get("records") or []
-    relevant = [x for x in naf if x.get("significance") == "medium"]
-    relevant += [x for x in who if x.get("significance") == "relevant"]
-    if relevant:
-        st.warning(
-            "A related safety notice needs review. Check the official notice "
-            "to see whether it applies to your specific product or batch."
-        )
-        for alert in relevant:
-            st.write(str(alert.get("title") or "Review related notice"))
-            url = alert.get("url") or alert.get("source_url")
-            if isinstance(url, str) and url.startswith(("https://", "http://")):
-                st.link_button("View official safety notice", url)
 
     # High-priority alerts must also be visible outside the collapsed evidence.
     alert_sources = ("nafdac_alerts", "who_alerts")

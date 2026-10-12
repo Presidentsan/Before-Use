@@ -790,17 +790,28 @@ st.markdown(
 )
 
 
-def _record_audio_with_mobile_option(label: str, key: str):
-    """Record in-app; preserve Streamlit recorder and offer an alternate recorder.
+def _prefer_mobile_recorder() -> bool:
+    """Choose the known-working recorder by default for mobile user agents.
 
-    The optional alternate recorder uses its own in-app start/stop controls.
-    Returned WAV bytes are wrapped in a file-like object for the existing ASR.
+    This only selects which UI control is initially shown. A user can switch
+    recorders at any time, and all audio still follows the existing ASR path.
     """
+    try:
+        agent = str(st.context.headers.get("User-Agent", "")).lower()
+    except (AttributeError, RuntimeError, TypeError):
+        agent = ""
+    return any(token in agent for token in ("iphone", "ipad", "ipod", "android", "mobile"))
+
+
+def _record_audio_with_mobile_option(label: str, key: str):
+    """Record directly on this page with a mobile-first default and desktop fallback."""
+    mobile_default = _prefer_mobile_recorder()
     alternate = st.checkbox(
-        "Use the alternative in-app microphone (for iPhone / mobile)",
-        value=False,
+        "Use mobile-friendly microphone",
+        value=mobile_default,
         key=f"{key}_alternate_choice",
-        help="Record here on this page. No external recording or upload needed.",
+        help=("Records directly inside Before Use. "
+              "Uncheck to use the standard microphone instead."),
     )
     if not alternate:
         return st.audio_input(label, sample_rate=16000, key=key)
@@ -809,12 +820,48 @@ def _record_audio_with_mobile_option(label: str, key: str):
         from streamlit_mic_recorder import mic_recorder
     except ImportError:
         st.warning(
-            "The alternative recorder is not installed yet. "
-            "Install streamlit-mic-recorder to enable it."
+            "The mobile-friendly recorder isn't installed. "
+            "Install streamlit-mic-recorder or uncheck the option above."
         )
         return None
 
-    st.caption("Tap Start recording, speak, then tap Stop recording.")
+    # A moving visual makes the recording section more discoverable.
+    # The library does not expose live audio levels to Python, so these
+    # animated bars intentionally DO NOT claim to measure microphone sound.
+    st.markdown(
+        """
+        <style>
+        .beforeuse-recorder-visual {
+            display:flex; align-items:center; justify-content:center;
+            gap:5px; height:66px; background:#ecf7f3;
+            border:1px solid #c8e4db; border-radius:14px; margin:5px 0 10px;
+        }
+        .beforeuse-recorder-visual span {
+            width:5px; height:13px; border-radius:8px; background:#0b6e5b;
+            animation: beforeuse-equalizer 1.1s ease-in-out infinite alternate;
+        }
+        .beforeuse-recorder-visual span:nth-child(2),
+        .beforeuse-recorder-visual span:nth-child(6) { animation-delay:.14s; }
+        .beforeuse-recorder-visual span:nth-child(3),
+        .beforeuse-recorder-visual span:nth-child(5) { animation-delay:.28s; }
+        .beforeuse-recorder-visual span:nth-child(4) { animation-delay:.42s; }
+        @keyframes beforeuse-equalizer {
+            from { transform:scaleY(.65); opacity:.55; }
+            to { transform:scaleY(2.5); opacity:1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .beforeuse-recorder-visual span { animation:none; }
+        }
+        </style>
+        <div class="beforeuse-recorder-visual" aria-hidden="true">
+           <span></span><span></span><span></span><span></span>
+           <span></span><span></span><span></span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption("Tap Start recording, speak, then tap Stop recording. "
+               "The button indicates when recording is active.")
     recorded = mic_recorder(
         start_prompt="🎙️ Start recording",
         stop_prompt="⏹ Stop recording",

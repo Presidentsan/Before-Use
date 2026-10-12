@@ -1,4 +1,5 @@
 import html as html_lib
+import io
 import time
 from datetime import datetime
 
@@ -789,75 +790,46 @@ st.markdown(
 )
 
 
-# Unified interactive-screen design. Only visual styles; all session logic remains unchanged.
-st.markdown("""
-<style>
-/* Journey-wide layout */
-.stApp [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {gap: .7rem;}
-.stApp [data-testid="stVerticalBlockBorderWrapper"] {
-    border: 1px solid rgba(11,110,91,.15) !important;
-    border-radius: 22px !important;
-    background: #fff !important;
-    box-shadow: 0 12px 35px rgba(11,42,38,.055);
-    padding: .3rem !important;
-}
-.stApp [data-testid="stAudioInput"] {
-    border: 1px solid rgba(11,110,91,.25);
-    border-radius: 18px;
-    background: #f3faf6;
-    padding: 1rem;
-}
-.stApp div[data-testid="stAlert"] {border-radius: 15px !important;}
-.stApp [data-testid="stExpander"] {
-    border: 1px solid #dfe8e1;
-    background: #fff;
-    border-radius: 14px;
-    overflow: hidden;
-}
-.stApp [data-testid="stTextInput"] input,
-.stApp [data-testid="stTextArea"] textarea,
-.stApp [data-testid="stSelectbox"] > div > div,
-.stApp [data-testid="stDateInput"] input {
-    background: #fff !important;
-    border-radius: 12px !important;
-    border-color: #cfded5 !important;
-}
-.stApp [data-testid="stButton"] > button[kind="primary"],
-.stApp [data-testid="stBaseButton-primary"] {
-    background: #0b6e5b !important;
-    border: 1px solid #0b6e5b !important;
-    color: #fff !important;
-    border-radius: 13px !important;
-    font-weight: 700 !important;
-}
-.stApp [data-testid="stButton"] > button[kind="primary"]:hover,
-.stApp [data-testid="stBaseButton-primary"]:hover {
-    background: #07503f !important;
-}
-.bu-section-intro {
-    border-left: 4px solid #0b6e5b;
-    padding: .65rem .95rem;
-    margin: 1.1rem 0 .8rem;
-    background: linear-gradient(90deg,#e7f5ed,#f8fbf9);
-    border-radius: 0 14px 14px 0;
-}
-.bu-section-intro .bu-kicker {color:#0b6e5b;letter-spacing:.11em;font-size:.72rem;font-weight:800;text-transform:uppercase;}
-.bu-section-intro .bu-title {font-size:1.1rem;font-weight:750;color:#0b2926;margin-top:.12rem;}
-.bu-passport-banner {
-    background:linear-gradient(130deg,#092e30,#0b6e5b);
-    border-radius: 20px;
-    padding: 1.25rem 1.5rem;
-    color:#fff;
-    margin: .4rem 0 1.2rem;
-}
-.bu-passport-banner strong {font-size:1.35rem;display:block;letter-spacing:-.02em;}
-.bu-passport-banner span {color:#d8efe5;font-size:.9rem;display:block;margin-top:.3rem;}
-@media(max-width:700px){
-    .stApp [data-testid="stVerticalBlockBorderWrapper"] {border-radius:16px!important;}
-    .bu-passport-banner {border-radius:16px;padding:1rem 1.1rem;}
-}
-</style>
-""", unsafe_allow_html=True)
+def _record_audio_with_mobile_option(label: str, key: str):
+    """Record in-app; preserve Streamlit recorder and offer an alternate recorder.
+
+    The optional alternate recorder uses its own in-app start/stop controls.
+    Returned WAV bytes are wrapped in a file-like object for the existing ASR.
+    """
+    alternate = st.checkbox(
+        "Use the alternative in-app microphone (for iPhone / mobile)",
+        value=False,
+        key=f"{key}_alternate_choice",
+        help="Record here on this page. No external recording or upload needed.",
+    )
+    if not alternate:
+        return st.audio_input(label, sample_rate=16000, key=key)
+
+    try:
+        from streamlit_mic_recorder import mic_recorder
+    except ImportError:
+        st.warning(
+            "The alternative recorder is not installed yet. "
+            "Install streamlit-mic-recorder to enable it."
+        )
+        return None
+
+    st.caption("Tap Start recording, speak, then tap Stop recording.")
+    recorded = mic_recorder(
+        start_prompt="🎙️ Start recording",
+        stop_prompt="⏹ Stop recording",
+        just_once=False,
+        use_container_width=True,
+        format="wav",
+        key=f"{key}_mobile_recorder",
+    )
+    if not recorded or not recorded.get("bytes"):
+        return None
+
+    audio_file = io.BytesIO(recorded["bytes"])
+    audio_file.name = f"{key}_mobile.wav"
+    audio_file.type = "audio/wav"
+    return audio_file
 
 
 DEFAULT_STATE = {
@@ -2585,11 +2557,6 @@ elif (
             """
         )
 
-        render_html(
-            '<div class="bu-section-intro"><div class="bu-kicker">Voice-first check</div>'
-            '<div class="bu-title">Speak, review, then verify</div></div>'
-        )
-
         st.info(
             "N-ATLAS voice language: "
             f"**{selected_language_name()}**"
@@ -2618,9 +2585,8 @@ elif (
                 enabled=voice_enabled,
             )
 
-            audio = st.audio_input(
+            audio = _record_audio_with_mobile_option(
                 "Tap the microphone and speak",
-                sample_rate=16000,
                 key="initial_audio",
             )
 
@@ -3078,10 +3044,6 @@ elif (
             """
         )
 
-        render_html(
-            '<div class="bu-section-intro"><div class="bu-kicker">Your confirmed details</div>'
-            '<div class="bu-title">This is the product we checked</div></div>'
-        )
         render_product_summary(
             product
         )
@@ -3173,10 +3135,6 @@ elif (
             enabled=voice_enabled,
         )
 
-        render_html(
-            '<div class="bu-section-intro"><div class="bu-kicker">Evidence trail</div>'
-            '<div class="bu-title">Official records, comparisons and safety alerts</div></div>'
-        )
         render_evidence_passport(
             result
         )
@@ -3619,9 +3577,8 @@ elif (
             enabled=voice_enabled,
         )
 
-        pharmacy_audio = st.audio_input(
+        pharmacy_audio = _record_audio_with_mobile_option(
             "Say an area or landmark",
-            sample_rate=16000,
             key="pharmacy_audio",
         )
 

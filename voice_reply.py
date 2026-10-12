@@ -50,6 +50,9 @@ BASE_DIR = (
 
 
 
+ENGLISH_PROMPTS_DIR = BASE_DIR / "voice_assets" / "english_prompts"
+
+
 YORUBA_PROMPTS_DIR = (
 
     BASE_DIR
@@ -1440,6 +1443,36 @@ def _escape_js_text(
 
 
 
+def _local_english_audio_path(message_id):
+    # Only trusted, fixed message IDs can select a local audio file.
+    allowed = {
+        "welcome_home", "capture_prompt", "confirmation_prompt",
+        "ready_to_check", "checking_prompt", "pharmacy_search_prompt",
+        "evidence_passport_result", "pharmacy_result_summary",
+    }
+    if message_id not in allowed:
+        return None
+    path = ENGLISH_PROMPTS_DIR / f"{message_id}.wav"
+    return path if path.is_file() else None
+
+
+def _render_local_english_audio(message_id, autoplay=True):
+    path = _local_english_audio_path(message_id)
+    if not path:
+        return False
+    try:
+        audio_bytes = _read_local_audio(str(path))
+        if not audio_bytes:
+            return False
+        st.audio(audio_bytes, format="audio/wav", autoplay=autoplay)
+        st.caption("If sound does not start automatically, press Play above.")
+        print("ENGLISH VOICE SOURCE: local", path.name)
+        return True
+    except Exception as exc:
+        print("ENGLISH LOCAL AUDIO ERROR:", type(exc).__name__, str(exc))
+        return False
+
+
 def _render_english_server_speech(text, autoplay=True):
 
     """Generate a real WAV file using Gemini, independent of browser speech synthesis."""
@@ -1462,7 +1495,10 @@ def _render_english_server_speech(text, autoplay=True):
 
         print("ENGLISH TTS ERROR:", type(exc).__name__, str(exc))
 
-        st.warning("English voice is temporarily unavailable. You can still read the reply below.")
+        if not _render_local_english_audio("evidence_passport_result", autoplay=False):
+            st.warning("English voice is temporarily unavailable. You can still read the reply below.")
+        else:
+            st.info("The recorded voice is a general guide. Read the product-specific results and warnings below.")
 
 
 
@@ -1599,15 +1635,14 @@ def render_voice_reply(
 
 
     if language == "en":
-
-        print("ENGLISH VOICE SOURCE:", "Gemini-generated WAV")
-
-        _render_english_server_speech(text=text, autoplay=autoplay)
-
+        # Serve fixed voice prompts from local WAV; dynamically speak findings.
+        if message_id == "evidence_passport_result":
+            _render_english_server_speech(text=text, autoplay=autoplay)
+        elif not _render_local_english_audio(message_id, autoplay=autoplay):
+            print("ENGLISH VOICE SOURCE: Gemini-generated WAV (fallback)")
+            _render_english_server_speech(text=text, autoplay=autoplay)
         with st.expander("Read the reply"):
-
             st.write(text)
-
         return
 
 

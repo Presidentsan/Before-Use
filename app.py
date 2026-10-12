@@ -1200,7 +1200,10 @@ def _begin_validation_session_if_needed():
 
     if not participant_id:
         st.session_state.validation_error = (
-            "Validation logging is not active for this interaction."
+            "Validation logging is not active for this interaction. "
+            "The anonymous participant was not saved or is no longer "
+            "available in this browser session. Return Home and "
+            "start a new validation consent step to log a new test."
         )
         return False
 
@@ -2551,6 +2554,10 @@ elif (
                             "id"
                         )
                     )
+                    if not st.session_state.validation_participant_id:
+                        raise RuntimeError(
+                            "Supabase returned no participant ID."
+                        )
                     st.session_state.validation_participant_code = (
                         participant.get(
                             "participant_code"
@@ -2582,7 +2589,14 @@ elif (
                         f"{type(error).__name__}: {error}"
                     )
 
+                # Preserve the failed-consent warning when resetting
+                # fields for the next check.
+                participant_creation_error = st.session_state.get(
+                    "validation_error"
+                )
                 _reset_validation_session_state()
+                if participant_creation_error:
+                    st.session_state.validation_error = participant_creation_error
 
                 st.session_state.current_step = (
                     "capture"
@@ -3220,6 +3234,15 @@ elif (
             st.session_state.evidence_result
             or {}
         )
+
+        # A user can finish through typed input without ever submitting
+        # a microphone recording. Start the validation session here too.
+        if (
+            st.session_state.get("validation_consent_given")
+            and st.session_state.get("validation_participant_id")
+            and not st.session_state.get("validation_session_id")
+        ):
+            _begin_validation_session_if_needed()
 
         _save_validation_result_if_needed(
             product,

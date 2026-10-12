@@ -835,24 +835,29 @@ def _render_nafdac_alerts(
     )
 
     if not source_ok:
-        st.warning(
-            "The NAFDAC safety-alert source "
-            "could not be fully checked."
-        )
-
-        if (
-            source
-            and source.get(
-                "error"
+        if source and source.get("source_mode") == "official_notice_snapshot":
+            st.info(
+                "A stored collection of official NAFDAC notices was checked. "
+                "It does not cover every current notice."
             )
-        ):
-            st.caption(
-                source.get(
-                    "error"
+            if source.get("last_successful_update"):
+                st.caption("Last updated: " + str(source["last_successful_update"]))
+            if not records:
+                st.caption(
+                    "No matching notice was found in this limited collection. "
+                    "This is not confirmation that no NAFDAC alert exists."
                 )
+        else:
+            st.warning(
+                "NAFDAC safety alerts could not be fully checked. "
+                "This is a source-availability issue, not a finding about your product."
             )
-
-        return
+            if source and source.get("error"):
+                st.caption(source.get("error"))
+        if not records:
+            return
+        # Do not suppress confirmed alert candidates simply because coverage is partial.
+        st.warning("Potentially relevant official notices were found. Review them below.")
 
     high_records = [
         record
@@ -994,10 +999,11 @@ def _render_nafdac_alerts(
 
         return
 
-    st.success(
-        "No matching high-confidence NAFDAC safety alert "
-        "was found for the confirmed identifiers."
-    )
+    if source_ok:
+        st.success(
+            "No matching high-confidence NAFDAC safety alert "
+            "was found for the confirmed identifiers."
+        )
 
     if possible_records:
         st.caption(
@@ -1653,119 +1659,62 @@ def render_evidence_passport(
         or {}
     )
 
+    st.markdown("### Your result")
+    _render_overall_finding(result)
     st.caption(
-        "A transparent record of what Before Use "
-        "checked and what each connected source "
-        "actually showed."
+        "Registration evidence cannot confirm that an individual pack "
+        "is genuine, untampered, properly stored or safe to use."
     )
-
-    st.markdown(
-        '<div class="bu-passport-banner"><strong>Your Evidence Passport</strong>'
-        '<span>Regulatory evidence and safety signals, clearly separated.</span></div>',
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        "### Product checked"
-    )
-
-    col1, col2 = (
-        st.columns(
-            2
-        )
-    )
-
-    with col1:
-        st.caption(
-            "Product"
-        )
-
-        st.write(
-            _safe(
-                product.get(
-                    "product_name"
-                )
-            )
-        )
-
-        st.caption(
-            "NAFDAC number"
-        )
-
-        st.write(
-            _safe(
-                product.get(
-                    "nafdac_number"
-                )
-            )
-        )
-
-        st.caption(
-            "Expiry"
-        )
-
-        st.write(
-            _safe(
-                product.get(
-                    "expiry_date"
-                )
-            )
-        )
-
-    with col2:
-        st.caption(
-            "Manufacturer"
-        )
-
-        st.write(
-            _safe(
-                product.get(
-                    "manufacturer"
-                )
-            )
-        )
-
-        st.caption(
-            "Batch / lot"
-        )
-
-        st.write(
-            _safe(
-                product.get(
-                    "batch_number"
-                )
-            )
-        )
-
-    # Each source is presented in a separate card; evidence computation is unchanged.
-    with st.container(border=True):
-        _render_overall_finding(result)
-
-    with st.container(border=True):
+    with st.expander("View the full Evidence Passport and sources"):
+        st.markdown("#### Product details checked")
+        left, right = st.columns(2)
+        with left:
+            st.caption("Product")
+            st.write(_safe(product.get("product_name")))
+            st.caption("NAFDAC number")
+            st.write(_safe(product.get("nafdac_number")))
+            st.caption("Expiry")
+            st.write(_safe(product.get("expiry_date")))
+        with right:
+            st.caption("Manufacturer")
+            st.write(_safe(product.get("manufacturer")))
+            st.caption("Batch / lot")
+            st.write(_safe(product.get("batch_number")))
+        st.divider()
         _render_current_greenbook(sources.get("greenbook") or {}, product)
-
-    with st.container(border=True):
         _render_napams_record(result)
-
-    with st.container(border=True):
         _render_historical(sources.get("historical_nafdac") or {})
-
-    with st.container(border=True):
         _render_nafdac_alerts(sources.get("nafdac_alerts") or {})
-
-    with st.container(border=True):
         _render_who_alerts(sources.get("who_alerts") or {})
+        _render_why(result)
 
-    _render_why(
-        result
-    )
+    # Relevant safety notices stay visible even if the registration status is
+    # the main finding. Incomplete source coverage never suppresses matches.
+    naf = (sources.get("nafdac_alerts") or {}).get("records") or []
+    who = (sources.get("who_alerts") or {}).get("records") or []
+    relevant = [x for x in naf if x.get("significance") == "medium"]
+    relevant += [x for x in who if x.get("significance") == "relevant"]
+    if relevant:
+        st.warning(
+            "A related safety notice needs review. Check the official notice "
+            "to see whether it applies to your specific product or batch."
+        )
+        for alert in relevant:
+            st.write(str(alert.get("title") or "Review related notice"))
+            url = alert.get("url") or alert.get("source_url")
+            if isinstance(url, str) and url.startswith(("https://", "http://")):
+                st.link_button("View official safety notice", url)
 
-    st.caption(
-        "Before Use reports regulatory evidence found "
-        "in the sources checked. A registration match "
-        "does not prove that an individual pack is genuine, "
-        "untampered, properly stored or safe to use."
-    )
+    # High-priority alerts must also be visible outside the collapsed evidence.
+    alert_sources = ("nafdac_alerts", "who_alerts")
+    for key in alert_sources:
+        data = sources.get(key) or {}
+        for item in data.get("records", []):
+            if item.get("significance") == "high":
+                st.error(
+                    "Safety alert requiring attention: "
+                    + str(item.get("title") or "Review the alert in the full evidence")
+                )
 
     # MAS scratch-code guidance is specific to eligible medicine packs.
     # An explicit non-medicine classification should not display it.

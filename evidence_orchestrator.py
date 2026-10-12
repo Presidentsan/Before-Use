@@ -2935,39 +2935,10 @@ def check_all_evidence(
 
 
 
-        if safety_source_incomplete:
+        # Alert-source limitations remain in the detailed Evidence Passport.
+        # Do not merge technical source errors into a registration finding.
 
-            (
 
-                summary,
-
-                next_action,
-
-            ) = _with_safety_limitation(
-
-                summary,
-
-                next_action,
-
-                nafdac_alerts=nafdac_alerts,
-
-                who_alerts=who_alerts,
-
-            )
-
-        else:
-
-            next_action = (
-
-                "No matching high-priority safety alert was found "
-
-                "in the connected sources. Continue checking the "
-
-                "physical pack. Registration does not prove that "
-
-                "this individual pack is genuine."
-
-            )
 
 
 
@@ -3029,41 +3000,9 @@ def check_all_evidence(
 
 
 
-        if safety_source_incomplete:
+        # Alert-source limitations remain in the detailed Evidence Passport.
+        # Do not merge technical source errors into a registration finding.
 
-            (
-
-                summary,
-
-                next_action,
-
-            ) = _with_safety_limitation(
-
-                summary,
-
-                next_action,
-
-                nafdac_alerts=nafdac_alerts,
-
-                who_alerts=who_alerts,
-
-            )
-
-        else:
-
-            next_action = (
-
-                "No matching high-priority NAFDAC safety alert "
-
-                "was found in the connected sources. Continue "
-
-                "checking the physical product. A registration "
-
-                "result does not prove that the individual item "
-
-                "is genuine."
-
-            )
 
 
 
@@ -3131,25 +3070,8 @@ def check_all_evidence(
 
 
 
-        if safety_source_incomplete:
-
-            (
-
-                summary,
-
-                next_action,
-
-            ) = _with_safety_limitation(
-
-                summary,
-
-                next_action,
-
-                nafdac_alerts=nafdac_alerts,
-
-                who_alerts=who_alerts,
-
-            )
+        # Alert-source limitations remain in the detailed Evidence Passport.
+        # Do not merge technical source errors into a registration finding.
 
 
 
@@ -3217,25 +3139,8 @@ def check_all_evidence(
 
 
 
-        if safety_source_incomplete:
-
-            (
-
-                summary,
-
-                next_action,
-
-            ) = _with_safety_limitation(
-
-                summary,
-
-                next_action,
-
-                nafdac_alerts=nafdac_alerts,
-
-                who_alerts=who_alerts,
-
-            )
+        # Alert-source limitations remain in the detailed Evidence Passport.
+        # Do not merge technical source errors into a registration finding.
 
 
 
@@ -3282,48 +3187,18 @@ def check_all_evidence(
 
 
     elif safety_source_incomplete:
-
-
-
-        code = (
-
-            "source_incomplete"
-
+        # The regulatory lookup has completed, but an alert feed was unavailable.
+        # Keep the registration finding as the main outcome; do not turn a
+        # source timeout into a product warning. The full Passport still shows
+        # precisely which alert source could not be checked.
+        code = registration_result.get("code", "record_not_found")
+        headline = registration_result.get("headline", "Registration check completed")
+        summary = registration_result.get(
+            "summary", "The available registration evidence was checked."
         )
-
-
-
-        headline = (
-
-            "Some evidence sources could not be checked"
-
+        next_action = registration_result.get(
+            "next_action", "Review the product details and the supporting records."
         )
-
-
-
-        summary = (
-
-            "Before Use completed the available regulatory "
-
-            "checks, but one or more relevant safety sources "
-
-            "did not complete during this check."
-
-        )
-
-
-
-        next_action = (
-
-            "You can retry later or verify directly with the "
-
-            "relevant regulator before relying on the incomplete "
-
-            "evidence trail."
-
-        )
-
-
 
     else:
 

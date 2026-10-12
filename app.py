@@ -3555,12 +3555,13 @@ elif (
             </div>
 
             <div class="screen-heading">
-                Find a pharmacy near you.
+                Find a Safer Place to Buy
             </div>
 
             <div class="screen-copy">
-                Tell us your area, and we'll help you explore nearby
-                pharmacy locations. Speak or type to get started.
+                Speak or type your area to find nearby pharmacies.
+                We'll also help you check their registration through
+                the official Pharmacists Council of Nigeria (PCN) portal.
             </div>
             """
         )

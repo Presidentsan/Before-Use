@@ -1,4 +1,5 @@
 import html as html_lib
+import io
 import time
 from datetime import datetime
 
@@ -787,6 +788,95 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+def _prefer_mobile_recorder() -> bool:
+    """Choose the known-working recorder by default for mobile user agents.
+
+    This only selects which UI control is initially shown. A user can switch
+    recorders at any time, and all audio still follows the existing ASR path.
+    """
+    try:
+        agent = str(st.context.headers.get("User-Agent", "")).lower()
+    except (AttributeError, RuntimeError, TypeError):
+        agent = ""
+    return any(token in agent for token in ("iphone", "ipad", "ipod", "android", "mobile"))
+
+
+def _record_audio_with_mobile_option(label: str, key: str):
+    """Record directly on this page with a mobile-first default and desktop fallback."""
+    mobile_default = _prefer_mobile_recorder()
+    alternate = st.checkbox(
+        "Use mobile-friendly microphone",
+        value=mobile_default,
+        key=f"{key}_alternate_choice",
+        help=("Records directly inside Before Use. "
+              "Uncheck to use the standard microphone instead."),
+    )
+    if not alternate:
+        return st.audio_input(label, sample_rate=16000, key=key)
+
+    try:
+        from streamlit_mic_recorder import mic_recorder
+    except ImportError:
+        st.warning(
+            "The mobile-friendly recorder isn't installed. "
+            "Install streamlit-mic-recorder or uncheck the option above."
+        )
+        return None
+
+    # A moving visual makes the recording section more discoverable.
+    # The library does not expose live audio levels to Python, so these
+    # animated bars intentionally DO NOT claim to measure microphone sound.
+    st.markdown(
+        """
+        <style>
+        .beforeuse-recorder-visual {
+            display:flex; align-items:center; justify-content:center;
+            gap:5px; height:66px; background:#ecf7f3;
+            border:1px solid #c8e4db; border-radius:14px; margin:5px 0 10px;
+        }
+        .beforeuse-recorder-visual span {
+            width:5px; height:13px; border-radius:8px; background:#0b6e5b;
+            animation: beforeuse-equalizer 1.1s ease-in-out infinite alternate;
+        }
+        .beforeuse-recorder-visual span:nth-child(2),
+        .beforeuse-recorder-visual span:nth-child(6) { animation-delay:.14s; }
+        .beforeuse-recorder-visual span:nth-child(3),
+        .beforeuse-recorder-visual span:nth-child(5) { animation-delay:.28s; }
+        .beforeuse-recorder-visual span:nth-child(4) { animation-delay:.42s; }
+        @keyframes beforeuse-equalizer {
+            from { transform:scaleY(.65); opacity:.55; }
+            to { transform:scaleY(2.5); opacity:1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .beforeuse-recorder-visual span { animation:none; }
+        }
+        </style>
+        <div class="beforeuse-recorder-visual" aria-hidden="true">
+           <span></span><span></span><span></span><span></span>
+           <span></span><span></span><span></span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption("Tap Start recording, speak, then tap Stop recording. "
+               "The button indicates when recording is active.")
+    recorded = mic_recorder(
+        start_prompt="🎙️ Start recording",
+        stop_prompt="⏹ Stop recording",
+        just_once=False,
+        use_container_width=True,
+        format="wav",
+        key=f"{key}_mobile_recorder",
+    )
+    if not recorded or not recorded.get("bytes"):
+        return None
+
+    audio_file = io.BytesIO(recorded["bytes"])
+    audio_file.name = f"{key}_mobile.wav"
+    audio_file.type = "audio/wav"
+    return audio_file
 
 
 DEFAULT_STATE = {
@@ -2127,12 +2217,12 @@ if (
 
             <div class="hero-copy">
 
-                Say what's on the pack, in
-                Nigerian English or Yorùbá.
-                Before Use reads it back to you,
-                cross-checks it against NAFDAC and
-                WHO records, and explains what the available
-                evidence can and cannot confirm.
+                <strong>Know what's behind the label before you use it.</strong><br><br>
+                Before Use is a voice-powered assistant that helps you check
+                medicines and other regulated products against official
+                registration records and safety alerts, so you can make
+                more informed decisions.<br><br>
+                <strong>Say what's on the pack. We'll help you check it.</strong>
 
             </div>
             """
@@ -2542,9 +2632,8 @@ elif (
                 enabled=voice_enabled,
             )
 
-            audio = st.audio_input(
+            audio = _record_audio_with_mobile_option(
                 "Tap the microphone and speak",
-                sample_rate=16000,
                 key="initial_audio",
             )
 
@@ -3087,16 +3176,14 @@ elif (
             render_voice_toggle()
         )
 
-        # Keep the complete written Evidence Passport unchanged.
-        # Spoken replies must remain short for dependable TTS generation.
+        # Keep the detailed Evidence Passport visible; speak a short conclusion.
         spoken_headline = " ".join(str(headline or "").split()).strip(" .")
         if not spoken_headline or len(spoken_headline) > 145:
             spoken_headline = "Your evidence check is complete"
-
         evidence_voice_text = (
             f"{spoken_headline}. "
             "Review the findings and any safety alerts below. "
-            "A matching registration record does not prove that the physical pack is genuine."
+            "A registration match does not prove that the physical pack is genuine."
         )
         render_voice_reply(
             evidence_voice_text,
@@ -3473,62 +3560,22 @@ elif (
         render_html(
             """
             <div class="eyebrow">
-                Voice-first pharmacy discovery
+                Before Use · Pharmacy finder
             </div>
 
             <div class="screen-heading">
-                Find a safer place to buy.
+                Find a Safer Place to Buy
             </div>
 
             <div class="screen-copy">
-
-                Tell Before Use where you want to search.
-                N-ATLAS listens,
-                Gemini interprets the request,
-                OpenStreetMap finds pharmacy candidates,
-                Gemini cleans and ranks those candidates,
-                and PCN remains the regulatory
-                verification source.
-
+                Speak or type your area to find nearby pharmacies.
+                We'll also help you check their registration through
+                the official Pharmacists Council of Nigeria (PCN) portal.
             </div>
             """
         )
 
-        st.warning(
-            "A pharmacy appearing in discovery results "
-            "is not the same as PCN verification."
-        )
-
-        st.info(
-            "N-ATLAS voice language: "
-            f"**{selected_language_name()}**"
-        )
-
-        portal = check_pcn_portal()
-
-        if portal.get(
-            "source_ok"
-        ):
-            st.success(
-                "Official PCN premises verification "
-                "portal is reachable."
-            )
-
-        else:
-            st.warning(
-                "The PCN premises verification portal "
-                "could not be confirmed reachable."
-            )
-
-        st.caption(
-            "Pharmacy discovery uses free OpenStreetMap data. "
-            "Gemini may rank or remove weak duplicate candidates, "
-            "but it cannot invent pharmacy facts or PCN status."
-        )
-
-        st.markdown(
-            "### Tell me where to search"
-        )
+        st.markdown("### Speak your location")
 
         voice_enabled = (
             render_voice_toggle()
@@ -3546,9 +3593,8 @@ elif (
             enabled=voice_enabled,
         )
 
-        pharmacy_audio = st.audio_input(
+        pharmacy_audio = _record_audio_with_mobile_option(
             "Say an area or landmark",
-            sample_rate=16000,
             key="pharmacy_audio",
         )
 
@@ -3655,9 +3701,7 @@ elif (
                 "before I search."
             )
 
-        st.markdown(
-            "### Confirm search details"
-        )
+        st.markdown("### Or type your area")
 
         location_query = st.text_input(
             "Area, neighbourhood, "
@@ -3675,19 +3719,20 @@ elif (
             ),
         )
 
-        radius_km = st.slider(
-            "Search radius",
-            min_value=1,
-            max_value=10,
-            value=int(
-                st.session_state
-                .pharmacy_radius_input
-                or
-                5
-            ),
-            step=1,
-            format="%d km",
-        )
+        with st.expander("Search distance (optional)"):
+            radius_km = st.slider(
+                "Search radius",
+                min_value=1,
+                max_value=10,
+                value=int(
+                    st.session_state
+                    .pharmacy_radius_input
+                    or
+                    5
+                ),
+                step=1,
+                format="%d km",
+            )
 
         search_col, clear_col = (
             st.columns(
@@ -3700,7 +3745,7 @@ elif (
 
         with search_col:
             if st.button(
-                "Confirm & find pharmacies",
+                "Find pharmacies",
                 type="primary",
                 use_container_width=True,
             ):
@@ -3739,7 +3784,7 @@ elif (
 
         with clear_col:
             if st.button(
-                "New voice search",
+                "Clear",
                 use_container_width=True,
             ):
                 reset_pharmacy_search()
@@ -3797,20 +3842,27 @@ elif (
                     f"{location_name}"
                 )
 
-                st.caption(
-                    "Discovery source: "
-                    f"{result.get('source_name')}"
-                )
-
-                raw_count = result.get(
-                    "raw_record_count"
-                )
-
-                if raw_count is not None:
+                with st.expander("About these search results"):
+                    portal = check_pcn_portal()
+                    if portal.get("source_ok"):
+                        st.caption("The official PCN verification portal is reachable.")
+                    else:
+                        st.caption("PCN portal availability could not be confirmed.")
                     st.caption(
-                        f"Found {raw_count} raw candidates, "
-                        f"{len(records)} usable after cleanup."
+                        "Location data: OpenStreetMap contributors. "
+                        "Listings are not proof of PCN registration "
+                        "or current opening status."
                     )
+                    st.caption(
+                        "Discovery source: "
+                        f"{result.get('source_name')}"
+                    )
+                    raw_count = result.get("raw_record_count")
+                    if raw_count is not None:
+                        st.caption(
+                            f"Found {raw_count} candidates; "
+                            f"showing {len(records)} after cleanup."
+                        )
 
                 if result.get(
                     "used_fallback"
@@ -3878,7 +3930,7 @@ elif (
                         )
 
                     st.markdown(
-                        "### Nearby pharmacy candidates"
+                        "### Nearby pharmacies"
                     )
 
                     for (
@@ -3950,28 +4002,16 @@ elif (
                                     )
                                 )
 
-                            st.warning(
-                                verification.get(
-                                    "label"
-                                )
-                            )
-
-                            st.write(
-                                verification.get(
-                                    "instruction"
-                                )
-                            )
-
                             st.caption(
-                                "Search this premises "
-                                "name on PCN: "
-                                +
-                                str(
-                                    verification.get(
-                                        "premises_name"
-                                    )
-                                )
+                                "Listing only · PCN registration not confirmed"
                             )
+                            with st.expander("How to verify this pharmacy"):
+                                st.warning(verification.get("label"))
+                                st.write(verification.get("instruction"))
+                                st.caption(
+                                    "Search this premises name on PCN: "
+                                    + str(verification.get("premises_name"))
+                                )
 
                             link_cols = (
                                 st.columns(
@@ -3999,11 +4039,8 @@ elif (
                                     )
 
                     st.caption(
-                        "OpenStreetMap provides discovery candidates. "
-                        "Gemini only cleans and ranks candidates "
-                        "returned by that source. "
-                        "Regulatory premises verification "
-                        "comes only from PCN."
+                        "© OpenStreetMap contributors · Location listings "
+                        "are not proof of PCN registration."
                     )
 
         st.divider()

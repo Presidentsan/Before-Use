@@ -2533,76 +2533,48 @@ elif (
                 try:
                     participant = create_participant(
                         consent_given=True,
-                        preferred_language=(
-                            selected_language_name()
-                        ),
-                        age_band=(
-                            None
-                            if age_band == "Prefer not to say"
-                            else age_band
-                        ),
-                        validator_type=(
-                            validator_map[
-                                tester_label
-                            ]
-                        ),
+                        preferred_language=selected_language_name(),
+                        age_band=(None if age_band == "Prefer not to say" else age_band),
+                        validator_type=validator_map[tester_label],
                     )
-
-                    st.session_state.validation_consent_given = True
-                    st.session_state.validation_participant_id = (
-                        participant.get(
-                            "id"
-                        )
-                    )
-                    if not st.session_state.validation_participant_id:
-                        raise RuntimeError(
-                            "Supabase returned no participant ID."
-                        )
-                    st.session_state.validation_participant_code = (
-                        participant.get(
-                            "participant_code"
-                        )
-                    )
-                    st.session_state.validation_participant_sequence_number = (
-                        participant.get(
-                            "participant_sequence_number"
-                        )
-                    )
-                    st.session_state.validation_validator_type = (
-                        validator_map[
-                            tester_label
-                        ]
-                    )
-                    st.session_state.validation_age_band = (
-                        None
-                        if age_band == "Prefer not to say"
-                        else age_band
-                    )
-                    st.session_state.validation_error = None
-
+                    participant_id = participant.get("id")
+                    if not participant_id:
+                        raise RuntimeError("Supabase returned no participant ID.")
                 except Exception as error:
+                    # Never treat a failed database write as successful consent.
+                    # Keep the user here, not on an unlogged product-check screen.
+                    st.session_state.validation_consent_given = False
+                    st.session_state.validation_participant_id = None
+                    st.session_state.validation_participant_code = None
                     st.session_state.validation_error = (
-                        "Validation logging could not create an anonymous "
-                        "participant record. You can still use Before Use, "
-                        "but this interaction will not count as a documented "
-                        "validation session. "
-                        f"{type(error).__name__}: {error}"
+                        "We could not save your anonymous validation registration. "
+                        "Please try again, or choose Skip validation to check your product "
+                        "without recording validation evidence."
                     )
-
-                # Preserve the failed-consent warning when resetting
-                # fields for the next check.
-                participant_creation_error = st.session_state.get(
-                    "validation_error"
-                )
-                _reset_validation_session_state()
-                if participant_creation_error:
-                    st.session_state.validation_error = participant_creation_error
-
-                st.session_state.current_step = (
-                    "capture"
-                )
-
-                st.rerun()
+                    print(
+                        "VALIDATION PARTICIPANT CREATE ERROR:",
+                        type(error).__name__,
+                        str(error),
+                        flush=True,
+                    )
+                    st.error(st.session_state.validation_error)
+                else:
+                    # Mark consent active only after Supabase confirms a saved row.
+                    st.session_state.validation_consent_given = True
+                    st.session_state.validation_participant_id = participant_id
+                    st.session_state.validation_participant_code = participant.get(
+                        "participant_code"
+                    )
+                    st.session_state.validation_participant_sequence_number = participant.get(
+                        "participant_sequence_number"
+                    )
+                    st.session_state.validation_validator_type = validator_map[tester_label]
+                    st.session_state.validation_age_band = (
+                        None if age_band == "Prefer not to say" else age_band
+                    )
+                    _reset_validation_session_state()
+                    st.session_state.current_step = "capture"
+                    st.rerun()
 
         st.caption(
             "Taking part is optional. You can still use Before "

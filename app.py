@@ -1,5 +1,4 @@
 import html as html_lib
-import io
 import time
 from datetime import datetime
 
@@ -788,95 +787,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-
-def _prefer_mobile_recorder() -> bool:
-    """Choose the known-working recorder by default for mobile user agents.
-
-    This only selects which UI control is initially shown. A user can switch
-    recorders at any time, and all audio still follows the existing ASR path.
-    """
-    try:
-        agent = str(st.context.headers.get("User-Agent", "")).lower()
-    except (AttributeError, RuntimeError, TypeError):
-        agent = ""
-    return any(token in agent for token in ("iphone", "ipad", "ipod", "android", "mobile"))
-
-
-def _record_audio_with_mobile_option(label: str, key: str):
-    """Record directly on this page with a mobile-first default and desktop fallback."""
-    mobile_default = _prefer_mobile_recorder()
-    alternate = st.checkbox(
-        "Use mobile-friendly microphone",
-        value=mobile_default,
-        key=f"{key}_alternate_choice",
-        help=("Records directly inside Before Use. "
-              "Uncheck to use the standard microphone instead."),
-    )
-    if not alternate:
-        return st.audio_input(label, sample_rate=16000, key=key)
-
-    try:
-        from streamlit_mic_recorder import mic_recorder
-    except ImportError:
-        st.warning(
-            "The mobile-friendly recorder isn't installed. "
-            "Install streamlit-mic-recorder or uncheck the option above."
-        )
-        return None
-
-    # A moving visual makes the recording section more discoverable.
-    # The library does not expose live audio levels to Python, so these
-    # animated bars intentionally DO NOT claim to measure microphone sound.
-    st.markdown(
-        """
-        <style>
-        .beforeuse-recorder-visual {
-            display:flex; align-items:center; justify-content:center;
-            gap:5px; height:66px; background:#ecf7f3;
-            border:1px solid #c8e4db; border-radius:14px; margin:5px 0 10px;
-        }
-        .beforeuse-recorder-visual span {
-            width:5px; height:13px; border-radius:8px; background:#0b6e5b;
-            animation: beforeuse-equalizer 1.1s ease-in-out infinite alternate;
-        }
-        .beforeuse-recorder-visual span:nth-child(2),
-        .beforeuse-recorder-visual span:nth-child(6) { animation-delay:.14s; }
-        .beforeuse-recorder-visual span:nth-child(3),
-        .beforeuse-recorder-visual span:nth-child(5) { animation-delay:.28s; }
-        .beforeuse-recorder-visual span:nth-child(4) { animation-delay:.42s; }
-        @keyframes beforeuse-equalizer {
-            from { transform:scaleY(.65); opacity:.55; }
-            to { transform:scaleY(2.5); opacity:1; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .beforeuse-recorder-visual span { animation:none; }
-        }
-        </style>
-        <div class="beforeuse-recorder-visual" aria-hidden="true">
-           <span></span><span></span><span></span><span></span>
-           <span></span><span></span><span></span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.caption("Tap Start recording, speak, then tap Stop recording. "
-               "The button indicates when recording is active.")
-    recorded = mic_recorder(
-        start_prompt="🎙️ Start recording",
-        stop_prompt="⏹ Stop recording",
-        just_once=False,
-        use_container_width=True,
-        format="wav",
-        key=f"{key}_mobile_recorder",
-    )
-    if not recorded or not recorded.get("bytes"):
-        return None
-
-    audio_file = io.BytesIO(recorded["bytes"])
-    audio_file.name = f"{key}_mobile.wav"
-    audio_file.type = "audio/wav"
-    return audio_file
 
 
 DEFAULT_STATE = {
@@ -2217,12 +2127,20 @@ if (
 
             <div class="hero-copy">
 
-                Say what's on the pack, in
-                Nigerian English or Yorùbá.
-                Before Use reads it back to you,
-                cross-checks it against NAFDAC and
-                WHO records, and explains what the available
-                evidence can and cannot confirm.
+                <strong>Know more about a product before you use it.</strong>
+                Before Use is a voice-powered assistant that helps
+                you check NAFDAC registration details, find relevant
+                safety alerts, and make more informed decisions
+                about products you buy.
+
+            </div>
+
+            <div class="hero-copy">
+
+                <strong>Say what's on the pack. We'll help you check it.</strong>
+                Speak in Nigerian English or Yorùbá, or enter the
+                details yourself. Before Use explains what the
+                available evidence can and cannot confirm.
 
             </div>
             """
@@ -2632,8 +2550,9 @@ elif (
                 enabled=voice_enabled,
             )
 
-            audio = _record_audio_with_mobile_option(
+            audio = st.audio_input(
                 "Tap the microphone and speak",
+                sample_rate=16000,
                 key="initial_audio",
             )
 
@@ -3560,13 +3479,11 @@ elif (
 
             <div class="screen-copy">
 
-                Tell Before Use where you want to search.
-                N-ATLAS listens,
-                Gemini interprets the request,
-                OpenStreetMap finds pharmacy candidates,
-                Gemini cleans and ranks those candidates,
-                and PCN remains the regulatory
-                verification source.
+                Tell Before Use the area where you want to find
+                a pharmacy. You can speak or type your location,
+                and we'll show nearby pharmacy listings to explore.
+                Check a pharmacy's registration and operating status
+                before relying on a listing.
 
             </div>
             """
@@ -3599,9 +3516,8 @@ elif (
             )
 
         st.caption(
-            "Pharmacy discovery uses free OpenStreetMap data. "
-            "Gemini may rank or remove weak duplicate candidates, "
-            "but it cannot invent pharmacy facts or PCN status."
+            "Pharmacy locations are sourced from OpenStreetMap contributors. "
+            "Listings are not proof of PCN registration or current operating status."
         )
 
         st.markdown(
@@ -3624,8 +3540,9 @@ elif (
             enabled=voice_enabled,
         )
 
-        pharmacy_audio = _record_audio_with_mobile_option(
+        pharmacy_audio = st.audio_input(
             "Say an area or landmark",
+            sample_rate=16000,
             key="pharmacy_audio",
         )
 
